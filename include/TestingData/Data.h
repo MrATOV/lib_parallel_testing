@@ -18,11 +18,6 @@ enum class NumberFillType {
     Descending
 };
 
-enum class TextFillType {
-    Text,
-    File
-};
-
 template <typename Metadata>
 class Data {
 public:

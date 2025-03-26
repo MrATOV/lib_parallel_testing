@@ -12,20 +12,20 @@ using MetadataText = std::tuple<char*,  size_t>;
 
 class DataText : public Data<MetadataText> {
 public:
-    DataText(const std::string& data, TextFillType type, const char* file_path = "") {
-        if (type == TextFillType::File) {
-            _filename = data;
+    DataText(const std::string &filename) {
+        _filename = filename;
+    }
+
+    DataText(const std::string& data, const char* file_path = "") {
+        _data = data;
+        std::string filename(file_path);
+        if (filename.empty()) {
+            _filename = getCurrentDateTime() + ".txt";
         } else {
-            _data = data;
-            std::string filename(file_path);
-            if (filename.empty()) {
-                _filename = getCurrentDateTime() + ".txt";
-            } else {
-                _filename = filename;
-            }
-            save(false, 0, 0);
-            clear();
+            _filename = filename;
         }
+        save(false, 0, 0);
+        clear();
     }
 
     void read() override {
