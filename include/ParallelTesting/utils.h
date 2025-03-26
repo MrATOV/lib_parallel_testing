@@ -2,8 +2,10 @@
 #define UTILS_H
 
 
+#include <iomanip>
 #include <string>
 #include <sstream>
+#include <chrono>
 
 template <typename T, typename = void>
 struct is_convertible_to_string : std::false_type {};
@@ -32,6 +34,16 @@ std::string tupleToStringImpl(const Tuple& t, std::index_sequence<Is...>) {
 template <typename... Args>
 std::string tupleToString(const std::tuple<Args...>& t) {
     return tupleToStringImpl(t, std::index_sequence_for<Args...>{});
+}
+
+inline std::string getCurrentDateTime() {
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+
+    std::tm *parts = std::localtime(&now_c);
+    std::ostringstream oss;
+    oss << std::put_time(parts, "%Y_%m_%d_%H_%M_%S");
+    return oss.str();
 }
 
 #endif

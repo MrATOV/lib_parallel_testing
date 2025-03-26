@@ -16,7 +16,7 @@ public:
         _filename = filename;
     }
 
-    DataText(const std::string& data, const char* file_path = "") {
+    DataText(const std::string& data, const char* file_path) {
         _data = data;
         std::string filename(file_path);
         if (filename.empty()) {

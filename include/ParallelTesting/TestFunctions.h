@@ -40,9 +40,12 @@ public:
         auto data_set = _data.DataSet();
         json result;
         result = json::array();
+        
         for(const auto& data : data_set) {
             data->read();
-            std::cout << data->title() << std::endl;
+            std::cout << "==============================================" << std::endl;
+            std::cout << "Обработка данных: " << data->title() << std::endl;
+            std::cout << "==============================================" << std::endl;
             json data_json;
             data_json["title"] = data->title();
             data_json["data"] = json::array();
@@ -50,10 +53,11 @@ public:
             for (int args_id = 0; args_id < function_args.size(); args_id++) {
                 const auto& args = function_args[args_id];
                 std::string argsString = tupleToString(args);
-                std::cout << "Тестовый набор " << argsString << std::endl;
+                std::cout << "\nТестовый набор параметров: " << argsString << std::endl;
+                std::cout << "----------------------------------------------" << std::endl;
                 PerformanceEvaluation pe;
-                json performance_result;
-
+                json performance_result = json::array();
+    
                 for(const auto& thread : _options.GetThreads()) {
                     omp_set_num_threads(thread);
                     for(size_t i = 0; i < interval.getSize(); ++i) {
@@ -66,25 +70,33 @@ public:
                     }
                     time = interval.calculateInterval();
                     pe.addTime(thread, time);
+                    
                     if (saveOption == SaveOption::saveAll) {
                         data->save_copy(args_id + 1, thread);
-                        performance_result["processing_image"] = true;
                     }
+    
+                    json thread_result;
+                    thread_result["thread"] = thread;
+                    thread_result["time"] = time;
+                    thread_result["acceleration"] = pe.getAcceleration(thread);
+                    thread_result["efficiency"] = pe.getEfficiency(thread);
+                    thread_result["cost"] = pe.getCost(thread);
+                    
+                    performance_result.push_back(thread_result);
+    
+                    std::cout << "Количество потоков: " << std::setw(3) << thread 
+                              << " | Время: " << std::fixed << std::setprecision(6) << time << " с"
+                              << " | Ускорение: " << std::setw(8) << std::setprecision(3) << pe.getAcceleration(thread)
+                              << " | Эффективность: " << std::setw(6) << std::setprecision(3) << pe.getEfficiency(thread)
+                              << " | Стоимость: " << std::setw(10) << std::setprecision(3) << pe.getCost(thread) 
+                              << std::endl;
                 }
-                auto times = pe.GetTimes();
-
-                for(const auto& [th, tm] : times) {
-                    std::cout << th << "->" << tm << "\t" << pe.getAcceleration(th) << "\t" << pe.getEfficiency(th) << "\t" << pe.getCost(th) << std::endl;
-                    performance_result["thread"] = th;
-                    performance_result["time"] = tm;
-                    performance_result["acceleration"] = pe.getAcceleration(th);
-                    performance_result["efficiency"] = pe.getEfficiency(th);
-                    performance_result["cost"] = pe.getCost(th);
-                }
+    
                 data_json["data"].push_back({
                     {"args", argsString},
                     {"performance", performance_result}
                 });
+                
                 if (saveOption == SaveOption::saveArgs) {
                     data->save_copy(args_id + 1);
                     data_json["processing_image"] = true;
@@ -93,9 +105,12 @@ public:
             result.push_back(data_json);
             data->clear_copy();
             data->clear();
+            std::cout << "==============================================\n" << std::endl;
         }
+        
         if (_options.NeedResultFile()) {
-            std::ofstream json_file("result.json");
+            std::string filename = "result_" + getCurrentDateTime() + ".json";
+            std::ofstream json_file(filename);
             json_file << result.dump(4) << std::endl;
             json_file.close();
         }
