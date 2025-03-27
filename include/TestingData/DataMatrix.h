@@ -2,6 +2,7 @@
 #define DATA_MATRIX_H
 
 #include "Data.h"
+#include <filesystem>
 #include <tuple>
 #include <variant>
 
@@ -30,7 +31,7 @@ public:
         } else {
             this->_filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, this->_filename);
         clear();
     }
 
@@ -46,7 +47,7 @@ public:
         } else {
             this->_filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, this->_filename);
         clear();
     }
     
@@ -69,7 +70,7 @@ public:
         } else {
             this->_filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, this->_filename);
         clear();
     }
 
@@ -116,14 +117,19 @@ public:
         }
     }
 
-    void save_copy(int args_id, int thread_num) const override {
+    const std::string save_copy(const std::string& dirname, int args_id, int thread_num) const override {
         try {
             auto data = std::get<0>(this->_copy);
             if (data) {
-                save(true, args_id, thread_num);
+                std::string filename = "proc" + this->proc_data_str(args_id, thread_num) + "_" + this->_filename;
+                std::filesystem::path file_path = std::filesystem::path(dirname) / filename;
+                save(true, args_id, thread_num, file_path);
+                return filename;
+            } else {
+                throw std::runtime_error("Copy data not found");
             }
         } catch (const std::bad_variant_access& e) {
-            return;
+            throw std::runtime_error("Copy data not found");
         }
     }
 
@@ -176,13 +182,7 @@ private:
         }
     }
 
-    void save(bool saveCopy, int args_id, int thread_num) const override {
-        std::string filename;
-        if (saveCopy) {
-            filename += "proc" + this->proc_data_str(args_id, thread_num) + "_" + this->_filename;
-        } else {
-            filename = this->_filename;
-        }
+    void save(bool saveCopy, int args_id, int thread_num, const std::string &filename) const override {
         std::ofstream file(filename, std::ios::binary);
         if (!file) throw std::runtime_error("Cannot open file");
 

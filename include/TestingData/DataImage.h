@@ -75,16 +75,19 @@ public:
         }
     }
 
-    void save_copy(int args_id, int thread_num) const override {
+    const std::string save_copy(const std::string& dirname, int args_id, int thread_num) const override {
         try {
             auto data = std::get<0>(_copy);
             if (data) {
-                save(true, args_id, thread_num);
+                std::string filename = "proc" + proc_data_str(args_id, thread_num) + "_" + _filename + ".png";
+                std::filesystem::path file_path = std::filesystem::path(dirname) / filename;
+                save(true, args_id, thread_num, file_path);
+                return filename;
             } else {
                 throw std::runtime_error("Copy data not found");
             }
         } catch (const std::bad_variant_access& e) {
-            return;
+            throw std::runtime_error("Copy data not found");
         }
     }
 
@@ -245,15 +248,7 @@ private:
         }
     }
 
-    void save(bool saveCopy, int args_id, int thread_num) const override {
-        std::string filename;
-        if (saveCopy) {
-            filename += "proc" + proc_data_str(args_id, thread_num) + "_" + _filename;
-        } else {
-            filename = _filename;
-        }
-        filename += ".png";
-    
+    void save(bool saveCopy, int args_id, int thread_num, const std::string& filename) const override {    
         AVFormatContext* outputContext = nullptr;
         if (avformat_alloc_output_context2(&outputContext, nullptr, nullptr, filename.c_str()) < 0) {
             throw std::runtime_error("Could not create output context");

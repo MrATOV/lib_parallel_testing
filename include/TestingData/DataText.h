@@ -2,6 +2,7 @@
 #define DATA_TEXT_H
 
 #include "Data.h"
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -24,7 +25,7 @@ public:
         } else {
             _filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, _filename);
         clear();
     }
 
@@ -61,16 +62,19 @@ public:
         }
     }
 
-    void save_copy(int args_id, int thread_num) const override {
+    const std::string save_copy(const std::string& dirname, int args_id, int thread_num) const override {
         try {
             auto data = std::get<0>(_copy);
             if (data) {
-                save(true, args_id, thread_num);
+                std::string filename = "proc" + proc_data_str(args_id, thread_num) + " " + _filename;
+                std::filesystem::path file_path = std::filesystem::path(dirname) / filename;
+                save(true, args_id, thread_num, file_path);
+                return filename;
             } else {
                 throw std::runtime_error("Copy data not found");
             }
         } catch (const std::bad_variant_access& e) {
-            return;
+            throw std::runtime_error("Copy data not found");
         }
     }
 
@@ -82,15 +86,12 @@ public:
 private:
     std::string _data;
     
-    void save(bool saveCopy, int args_id, int thread_num) const override {
+    void save(bool saveCopy, int args_id, int thread_num, const std::string &filename) const override {
         std::string data;
-        std::string filename;
         if (saveCopy) {
             data = std::string(std::get<0>(_copy));
-            filename = "proc" + proc_data_str(args_id, thread_num) + " " + _filename;
         } else {
             data = _data;
-            filename = _filename;
         }
         
         std::ofstream file(filename);

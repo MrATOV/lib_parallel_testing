@@ -23,6 +23,9 @@ public:
     
     TestOptions(SaveOption saveOption) 
         : TestOptions({1, 2}, 2, Alpha::percent90, IntervalType::CD, CalcValue::Mean, saveOption, false) {}
+    
+    TestOptions(SaveOption saveOption, bool generateResultFile) 
+        : TestOptions({1, 2}, 2, Alpha::percent90, IntervalType::CD, CalcValue::Mean, saveOption, generateResultFile) {}
 
     TestOptions(const std::set<unsigned int>& threads) 
         : TestOptions(threads, 2, Alpha::percent90, IntervalType::CD, CalcValue::Mean, SaveOption::notSave, false) {}

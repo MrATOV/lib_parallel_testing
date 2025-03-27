@@ -39,10 +39,12 @@ std::string tupleToString(const std::tuple<Args...>& t) {
 inline std::string getCurrentDateTime() {
     auto now = std::chrono::system_clock::now();
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    
+    auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()) % 1000000000;
 
     std::tm *parts = std::localtime(&now_c);
     std::ostringstream oss;
-    oss << std::put_time(parts, "%Y_%m_%d_%H_%M_%S");
+    oss << std::put_time(parts, "%Y_%m_%d_%H_%M_%S") << "_" << nanoseconds.count();
     return oss.str();
 }
 

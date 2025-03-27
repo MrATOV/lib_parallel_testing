@@ -13,6 +13,7 @@
 #include <initializer_list>
 #include <iostream>
 #include <memory>
+#include <filesystem>
 #include <omp.h>
 #include <stdexcept>
 #include <tuple>
@@ -41,6 +42,18 @@ public:
         json result;
         result = json::array();
         
+        std::string dirname = getCurrentDateTime();
+
+        try {
+            if (!std::filesystem::create_directory(dirname)) {
+                std::cerr << "Не удалось создать директорию. Тестирование отменено" << std::endl;
+                return;
+            } 
+        } catch (const std::filesystem::filesystem_error& e) {
+            std::cerr << "Ошибка " << e.what() << std::endl;
+            return;
+        }
+
         for(const auto& data : data_set) {
             data->read();
             std::cout << "==============================================" << std::endl;
@@ -71,11 +84,11 @@ public:
                     time = interval.calculateInterval();
                     pe.addTime(thread, time);
                     
+                    json thread_result;
                     if (saveOption == SaveOption::saveAll) {
-                        data->save_copy(args_id + 1, thread);
+                        thread_result["processing_image"] = data->save_copy(dirname, args_id + 1, thread);
                     }
     
-                    json thread_result;
                     thread_result["thread"] = thread;
                     thread_result["time"] = time;
                     thread_result["acceleration"] = pe.getAcceleration(thread);
@@ -98,8 +111,7 @@ public:
                 });
                 
                 if (saveOption == SaveOption::saveArgs) {
-                    data->save_copy(args_id + 1);
-                    data_json["processing_image"] = true;
+                    data_json["processing_image"] = data->save_copy(dirname, args_id + 1);
                 }
             }
             result.push_back(data_json);
@@ -109,10 +121,12 @@ public:
         }
         
         if (_options.NeedResultFile()) {
-            std::string filename = "result_" + getCurrentDateTime() + ".json";
-            std::ofstream json_file(filename);
-            json_file << result.dump(4) << std::endl;
-            json_file.close();
+            std::filesystem::path result_path = std::filesystem::path(dirname) / "result.json";
+            std::ofstream json_file(result_path);
+            if (json_file.is_open()){
+                json_file << result.dump(4) << std::endl;
+                json_file.close();
+            }
         }
     }
 

@@ -2,6 +2,7 @@
 #define DATA_ARRAY_H
 
 #include "Data.h"
+#include <filesystem>
 #include <string>
 
 template <typename T>
@@ -25,7 +26,7 @@ public:
         } else {
             this->_filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, this->_filename);
 
         clear();
     }
@@ -40,7 +41,7 @@ public:
         } else {
             this->_filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, this->_filename);
 
         clear();
     }
@@ -60,7 +61,7 @@ public:
         } else {
             this->_filename = filename;
         }
-        save(false, 0, 0);
+        save(false, 0, 0, this->_filename);
 
         clear();
     }
@@ -96,14 +97,19 @@ public:
         }
     }
 
-    void save_copy(int args_id, int thread_num) const override {
+    const std::string save_copy(const std::string& dirname, int args_id, int thread_num) const override {
         try {
             auto data = std::get<0>(this->_copy); 
-            if (data) {
-                save(true, args_id, thread_num);
+            if (data) { 
+                std::string filename = "proc" + this->proc_data_str(args_id, thread_num) + "_" + this->_filename;
+                std::filesystem::path file_path = std::filesystem::path(dirname) / filename;
+                save(true, args_id, thread_num, file_path);
+                return filename;
+            } else {
+                throw std::runtime_error("Copy data not found");
             }
         } catch (const std::bad_variant_access& e) {
-            return;
+            throw std::runtime_error("Copy data not found");
         }
     }
 
@@ -149,16 +155,14 @@ private:
         }
     }
 
-    void save(bool saveCopy, int args_id, int thread_num) const override {
+    void save(bool saveCopy, int args_id, int thread_num, const std::string& filename) const override {
         const T* data;
-        std::string filename;
         if (saveCopy) {
             data = static_cast<T*>(std::get<0>(this->_copy));
-            filename += "proc" + this->proc_data_str(args_id, thread_num) + "_" + this->_filename; 
         } else {
             data = _data.data();
-            filename = this->_filename;
         }
+        
         std::ofstream file(filename, std::ios::binary);
         if (!file) throw std::runtime_error("Cannot open file");
 

@@ -12,6 +12,7 @@
 #include <ctime>
 #include <fstream>
 #include <stdexcept>
+#include <filesystem>
 
 enum class NumberFillType {
     Ascending,
@@ -25,14 +26,14 @@ public:
     virtual void clear() = 0;
     virtual Metadata& copy() = 0;
     virtual void clear_copy() = 0;
-    virtual void save_copy(int args_id, int thread_num = 0) const = 0;
+    virtual const std::string save_copy(const std::string& dirname, int args_id, int thread_num = 0) const = 0;
     virtual const std::string title() const = 0;
     virtual ~Data() = default;
 protected:
     std::string _filename;
     Metadata _copy;
 
-    virtual void save(bool saveCopy = false, int args_id = 0, int thread_num = 0) const = 0;
+    virtual void save(bool saveCopy = false, int args_id = 0, int thread_num = 0, const std::string& filename = "") const = 0;
     virtual void load() = 0;
 
     std::string getCurrentDateTime() const {
