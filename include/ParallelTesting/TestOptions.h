@@ -9,6 +9,7 @@
 #include "TestingData/DataImage.h"
 #include "TestingData/DataMatrix.h"
 #include "TestingData/DataText.h"
+#include "TestingData/DataAudio.h"
 
 enum class SaveOption {
     saveAll,
@@ -110,6 +111,10 @@ struct MetadataTraits<DataText> {
 template<>
 struct MetadataTraits<DataImage> {
     using MetadataType = MetadataImage;
+};
+template<>
+struct MetadataTraits<DataAudio> {
+    using MetadataType = MetadataAudio;
 };
 
 template <typename T>

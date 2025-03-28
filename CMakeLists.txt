@@ -37,6 +37,7 @@ target_sources(ParallelTesting INTERFACE
         include/TestingData/DataMatrix.h
         include/TestingData/DataImage.h
         include/TestingData/DataText.h
+        include/TestingData/DataAudio.h
 )
 
 target_link_libraries(ParallelTesting INTERFACE

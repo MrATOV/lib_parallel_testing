@@ -5,6 +5,7 @@
 #include "TestingData/DataImage.h"
 #include "TestingData/DataMatrix.h"
 #include "TestingData/DataText.h"
+#include "TestingData/DataAudio.h"
 #include "TestOptions.h"
 #include "utils.h"
 #include "PerformanceEvaluation.h"
