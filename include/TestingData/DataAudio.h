@@ -22,7 +22,7 @@ struct AudioSample {
     AudioSample(float l = 0.0f, float r = 0.0f) : left(l), right(r) {}
 };
 
-using MetadataAudio = std::tuple<AudioSample*, size_t, int>;
+using MetadataAudio = std::tuple<AudioSample*, size_t, int, int>;
 
 class DataAudio : public Data<MetadataAudio> {
 public:
@@ -54,14 +54,14 @@ public:
         AudioSample* copyData = new AudioSample[_sampleCount];
         std::copy(_samples.begin(), _samples.end(), copyData);
         
-        _copy = std::make_tuple(copyData, _sampleCount, _sampleRate);
+        _copy = std::make_tuple(copyData, _sampleCount, _sampleRate, _channels);
         return _copy;
     }
 
     void clear_copy() override {
         if (auto* data = std::get<0>(_copy)) {
             delete[] data;
-            _copy = std::make_tuple(nullptr, 0, 0);
+            _copy = std::make_tuple(nullptr, 0, 0, 0);
         }
     }
 
