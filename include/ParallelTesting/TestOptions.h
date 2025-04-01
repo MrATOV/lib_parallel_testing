@@ -3,19 +3,20 @@
 
 #include <set>
 #include <vector>
-#include "TestingData/Data.h"
 #include "ConfidenceInterval.h"
+#include "TestingData/Data.h"
 #include "TestingData/DataArray.h"
 #include "TestingData/DataImage.h"
 #include "TestingData/DataMatrix.h"
 #include "TestingData/DataText.h"
 #include "TestingData/DataAudio.h"
+#include "TestingData/DataVideo.h"
 
 enum class SaveOption {
     saveAll,
     saveArgs,
     notSave
-};
+}; 
 
 class TestOptions {
 public:
@@ -115,6 +116,10 @@ struct MetadataTraits<DataImage> {
 template<>
 struct MetadataTraits<DataAudio> {
     using MetadataType = MetadataAudio;
+};
+template<>
+struct MetadataTraits<DataVideo> {
+    using MetadataType = MetadataVideo;
 };
 
 template <typename T>

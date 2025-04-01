@@ -2,6 +2,7 @@
 #define DATA_AUDIO_H
 
 #include "Data.h"
+#include <stdexcept>
 #include <vector>
 #include <cmath>
 #include <memory>
@@ -15,20 +16,39 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-struct AudioSample {
-    float left;
-    float right;
-    
-    AudioSample(float l = 0.0f, float r = 0.0f) : left(l), right(r) {}
+class AudioBuffer {
+public:
+    AudioBuffer(): _data(nullptr), _channels(0) {}
+
+    AudioBuffer(float* data, int channels) 
+        : _data(data), _channels(channels) {}
+
+    void clear() {
+        delete[] _data;
+    }
+
+    float& operator()(size_t sampleIndex, int channelIndex) {
+        return _data[sampleIndex * _channels + channelIndex];
+    }
+
+    const float& operator()(size_t sampleIndex, int channelIndex) const {
+        return _data[sampleIndex * _channels + channelIndex];
+    }
+
+    float* data() const { return _data; }
+
+private:
+    float* _data;
+    uint16_t _channels;
 };
 
-using MetadataAudio = std::tuple<AudioSample*, size_t, int, int>;
+using MetadataAudio = std::tuple<AudioBuffer, size_t, int, uint16_t>;
 
 class DataAudio : public Data<MetadataAudio> {
 public:
-    DataAudio(const std::string& filename) : _channels(0) {
+    DataAudio(const std::string& filename) {
         _filename = filename;
-        av_log_set_level(AV_LOG_ERROR);
+        av_log_set_level(AV_LOG_QUIET);
     }
     
     ~DataAudio() override { 
@@ -41,8 +61,8 @@ public:
     }
 
     void clear() override {
-        _samples.clear();
-        _samples.shrink_to_fit();
+        _audioData.clear();
+        _audioData.shrink_to_fit();
         _sampleCount = 0;
         _sampleRate = 0;
         _channels = 0;
@@ -51,25 +71,28 @@ public:
     MetadataAudio& copy() override {
         clear_copy();
         
-        AudioSample* copyData = new AudioSample[_sampleCount];
-        std::copy(_samples.begin(), _samples.end(), copyData);
+        float* copyData = new float[_audioData.size()];
+        std::copy(_audioData.begin(), _audioData.end(), copyData);
         
-        _copy = std::make_tuple(copyData, _sampleCount, _sampleRate, _channels);
+        AudioBuffer audioBuffer(copyData, _channels);
+        
+        _copy = std::make_tuple(audioBuffer, _sampleCount, _sampleRate, _channels);
         return _copy;
     }
 
     void clear_copy() override {
-        if (auto* data = std::get<0>(_copy)) {
-            delete[] data;
-            _copy = std::make_tuple(nullptr, 0, 0, 0);
+        auto buffer = std::get<0>(_copy);
+        if (buffer.data()) {
+            buffer.clear();
+            _copy = std::make_tuple(AudioBuffer(), 0, 0, 0);
         }
     }
 
     const std::string save_copy(const std::string& dirname, int args_id, int thread_num = 0) const override {
         try {
-            auto data = std::get<0>(_copy);
-            if (data) {
-                std::string filename = "proc" + proc_data_str(args_id, thread_num) + "_" + _filename + ".wav";
+            auto buffer = std::get<0>(_copy);
+            if (buffer.data()) {
+                std::string filename = "proc" + proc_data_str(args_id, thread_num) + "_" + _filename + ".m4a";
                 std::filesystem::path file_path = std::filesystem::path(dirname) / filename;
                 save(true, args_id, thread_num, file_path.string());
                 return filename;
@@ -89,26 +112,27 @@ public:
     }
 
 protected:
-    std::vector<AudioSample> _samples;
+    std::vector<float> _audioData;
     size_t _sampleCount = 0;
     int _sampleRate = 0;
-    int _channels;
+    int _channels = 0;
 
     void save(bool saveCopy, int args_id, int thread_num, const std::string& filename) const override {
         AVFormatContext* fmt_ctx = nullptr;
         AVCodecContext* codec_ctx = nullptr;
+        SwrContext* swr_ctx = nullptr;
         AVFrame* frame = nullptr;
         AVPacket* pkt = nullptr;
         AVChannelLayout out_layout;
 
         try {
-            if (avformat_alloc_output_context2(&fmt_ctx, nullptr, nullptr, filename.c_str()) < 0) {
+            if (avformat_alloc_output_context2(&fmt_ctx, nullptr, "ipod", filename.c_str()) < 0) {
                 throw std::runtime_error("Could not create output context");
             }
 
-            const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_PCM_F32LE);
+            const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
             if (!codec) {
-                throw std::runtime_error("Codec not found");
+                throw std::runtime_error("AAC codec not found");
             }
 
             AVStream* stream = avformat_new_stream(fmt_ctx, nullptr);
@@ -121,21 +145,28 @@ protected:
                 throw std::runtime_error("Could not allocate codec context");
             }
 
-            if (_channels == 1) {
-                av_channel_layout_from_mask(&out_layout, AV_CH_LAYOUT_MONO);
-            } else {
-                av_channel_layout_from_mask(&out_layout, AV_CH_LAYOUT_STEREO);
+            uint64_t channel_layout = 0;
+            for (int i = 0; i < _channels; ++i) {
+                channel_layout |= 1ULL << i;
             }
+            av_channel_layout_from_mask(&out_layout, channel_layout);
 
-            codec_ctx->sample_fmt = AV_SAMPLE_FMT_FLT;
+            codec_ctx->sample_fmt = AV_SAMPLE_FMT_FLTP;
             codec_ctx->sample_rate = _sampleRate;
             av_channel_layout_copy(&codec_ctx->ch_layout, &out_layout);
             codec_ctx->bit_rate = 64000;
-            stream->time_base = (AVRational){1, _sampleRate};
+            codec_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+            
+            AVDictionary* opts = nullptr;
+            av_dict_set(&opts, "aac_coder", "twoloop", 0);
+            av_dict_set(&opts, "profile", "aac_low", 0);
+            av_dict_set_int(&opts, "compression_level", 12, 0);
 
-            if (avcodec_open2(codec_ctx, codec, nullptr) < 0) {
-                throw std::runtime_error("Could not open codec");
+            if (avcodec_open2(codec_ctx, codec, &opts) < 0) {
+                av_dict_free(&opts);
+                throw std::runtime_error("Could not open AAC codec");
             }
+            av_dict_free(&opts);
 
             if (avcodec_parameters_from_context(stream->codecpar, codec_ctx) < 0) {
                 throw std::runtime_error("Could not copy codec parameters");
@@ -151,12 +182,19 @@ protected:
                 throw std::runtime_error("Could not write header");
             }
 
+            if (swr_alloc_set_opts2(&swr_ctx,
+                                  &out_layout, AV_SAMPLE_FMT_FLTP, _sampleRate,
+                                  &out_layout, AV_SAMPLE_FMT_FLT, _sampleRate,
+                                  0, nullptr) < 0 || !swr_ctx || swr_init(swr_ctx) < 0) {
+                throw std::runtime_error("Could not initialize resampler");
+            }
+
             frame = av_frame_alloc();
             if (!frame) {
                 throw std::runtime_error("Could not allocate frame");
             }
             
-            frame->nb_samples = std::min(1024, static_cast<int>(_sampleCount));
+            frame->nb_samples = codec_ctx->frame_size;
             frame->format = codec_ctx->sample_fmt;
             av_channel_layout_copy(&frame->ch_layout, &codec_ctx->ch_layout);
             
@@ -171,6 +209,8 @@ protected:
 
             int64_t pts = 0;
             size_t samples_written = 0;
+            const float* srcData = saveCopy ? std::get<0>(_copy).data() : _audioData.data();
+
             while (samples_written < _sampleCount) {
                 size_t samples_to_write = std::min(
                     static_cast<size_t>(frame->nb_samples), 
@@ -181,27 +221,14 @@ protected:
                     throw std::runtime_error("Frame is not writable");
                 }
 
-                if (saveCopy) {
-                    auto copyData = std::get<0>(_copy);
-                    for (size_t i = 0; i < samples_to_write; ++i) {
-                        size_t idx = samples_written + i;
-                        if (_channels == 1) {
-                            ((float*)frame->data[0])[i] = copyData[idx].left;
-                        } else {
-                            ((float*)frame->data[0])[i*2] = copyData[idx].left;
-                            ((float*)frame->data[0])[i*2 + 1] = copyData[idx].right;
-                        }
-                    }
-                } else {
-                    for (size_t i = 0; i < samples_to_write; ++i) {
-                        size_t idx = samples_written + i;
-                        if (_channels == 1) {
-                            ((float*)frame->data[0])[i] = _samples[idx].left;
-                        } else {
-                            ((float*)frame->data[0])[i*2] = _samples[idx].left;
-                            ((float*)frame->data[0])[i*2 + 1] = _samples[idx].right;
-                        }
-                    }
+                const uint8_t* in_data[AV_NUM_DATA_POINTERS] = {
+                    reinterpret_cast<const uint8_t*>(srcData + samples_written * _channels),
+                    nullptr
+                };
+                
+                if (swr_convert(swr_ctx, frame->data, samples_to_write,
+                               in_data, samples_to_write) < 0) {
+                    throw std::runtime_error("Error in audio conversion");
                 }
 
                 frame->nb_samples = samples_to_write;
@@ -238,6 +265,7 @@ protected:
         }
         catch (...) {
             av_channel_layout_uninit(&out_layout);
+            if (swr_ctx) swr_free(&swr_ctx);
             if (pkt) av_packet_free(&pkt);
             if (frame) av_frame_free(&frame);
             if (codec_ctx) avcodec_free_context(&codec_ctx);
@@ -248,6 +276,7 @@ protected:
             throw;
         }
 
+        if (swr_ctx) swr_free(&swr_ctx);
         if (pkt) av_packet_free(&pkt);
         if (frame) av_frame_free(&frame);
         if (codec_ctx) avcodec_free_context(&codec_ctx);
@@ -318,12 +347,7 @@ protected:
             _sampleRate = codec_ctx->sample_rate;
             _channels = in_layout.nb_channels;
     
-            if (_channels == 1) {
-                av_channel_layout_from_mask(&out_layout, AV_CH_LAYOUT_MONO);
-            } else {
-                av_channel_layout_from_mask(&out_layout, AV_CH_LAYOUT_STEREO);
-                _channels = 2;
-            }
+            av_channel_layout_copy(&out_layout, &in_layout);
     
             frame = av_frame_alloc();
             if (!frame) throw std::runtime_error("Could not allocate frame");
@@ -338,7 +362,7 @@ protected:
                 throw std::runtime_error("Could not initialize resampler");
             }
     
-            _samples.reserve(fmt_ctx->duration * _sampleRate / AV_TIME_BASE * _channels);
+            _audioData.reserve(fmt_ctx->duration * _sampleRate / AV_TIME_BASE * _channels);
     
             while (av_read_frame(fmt_ctx, pkt) >= 0) {
                 if (pkt->stream_index == audio_stream_idx) {
@@ -360,20 +384,12 @@ protected:
                                                       (const uint8_t**)frame->data, frame->nb_samples);
                             
                             if (converted > 0) {
-                                size_t prev_size = _samples.size();
-                                _samples.resize(prev_size + converted);
+                                size_t prev_size = _audioData.size();
+                                _audioData.resize(prev_size + converted * _channels);
                                 
-                                float* audio_data = (float*)out_data[0];
-                                for (int i = 0; i < converted; ++i) {
-                                    if (_channels == 1) {
-                                        _samples[prev_size + i] = AudioSample(audio_data[i], 0.0f);
-                                    } else {
-                                        _samples[prev_size + i] = AudioSample(
-                                            audio_data[i*2], 
-                                            audio_data[i*2 + 1]
-                                        );
-                                    }
-                                }
+                                memcpy(_audioData.data() + prev_size, 
+                                       out_data[0], 
+                                       converted * _channels * sizeof(float));
                             }
                             
                             if (out_data[0]) av_freep(&out_data[0]);
@@ -383,7 +399,7 @@ protected:
                 av_packet_unref(pkt);
             }
     
-            _sampleCount = _samples.size();
+            _sampleCount = _audioData.size() / _channels;
             av_channel_layout_uninit(&in_layout);
             av_channel_layout_uninit(&out_layout);
         }
