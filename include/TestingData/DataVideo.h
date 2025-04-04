@@ -562,12 +562,16 @@ public:
 
     const std::string title() const override {
         std::ostringstream ss;
-        ss << "Video: " << width << "x" << height << ", ";
-        ss << video_frame_count << " frames";
+        ss << "Видео: " << width << " на " << height << ", ";
+        ss << video_frame_count << " кадров";
         if(audio_frame_count > 0) {
-            ss << ", Audio: " << sample_rate << "Hz " << channels << "ch";
+            ss << ", Аудио: " << sample_rate << "Гц " << channels << " каналов";
         }
         return ss.str();
+    }
+
+    const std::string type() const override {
+        return std::string("video");
     }
 
     void commit_frame(size_t index, const std::vector<std::vector<uint8_t>>& frame_data) {

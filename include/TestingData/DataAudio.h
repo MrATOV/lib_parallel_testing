@@ -111,6 +111,10 @@ public:
         return ss.str();
     }
 
+    const std::string type() const override {
+        return std::string("audio");
+    }
+
 protected:
     std::vector<float> _audioData;
     size_t _sampleCount = 0;

@@ -28,6 +28,7 @@ public:
     virtual void clear_copy() = 0;
     virtual const std::string save_copy(const std::string& dirname, int args_id, int thread_num = 0) const = 0;
     virtual const std::string title() const = 0;
+    virtual const std::string type() const = 0;
     virtual ~Data() = default;
 protected:
     std::string _filename;

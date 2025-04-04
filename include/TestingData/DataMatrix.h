@@ -138,6 +138,10 @@ public:
         return title;
     }
 
+    const std::string type() const override {
+        return std::string("matrix");
+    }
+
 private:
     std::vector<std::vector<T>> _data;
 

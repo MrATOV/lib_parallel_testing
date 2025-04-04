@@ -82,6 +82,10 @@ public:
         std::string title = "Строка. Количество символов=" + std::to_string(_data.length()); 
         return title;
     }
+
+    const std::string type() const override {
+        return std::string("text");
+    }
     
 private:
     std::string _data;

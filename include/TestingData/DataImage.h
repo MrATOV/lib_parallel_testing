@@ -98,6 +98,10 @@ public:
         return title;
     }
 
+    const std::string type() const override {
+        return std::string("image");
+    }
+
 private:
     std::vector<uint8_t> _data;
     size_t _width = 0;

@@ -118,6 +118,10 @@ public:
         return title;
     }
 
+    const std::string type() const override {
+        return std::string("array");
+    }
+
     
 private:
     std::vector<T> _data;
