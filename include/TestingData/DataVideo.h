@@ -562,11 +562,13 @@ public:
 
     const std::string title() const override {
         std::ostringstream ss;
-        ss << "Видео: " << width << " на " << height << ", ";
-        ss << video_frame_count << " кадров";
-        if(audio_frame_count > 0) {
-            ss << ", Аудио: " << sample_rate << "Гц " << channels << " каналов";
+        ss << "Видео размером " << width << " на " << height << ", "
+           << video_frame_count << " кадров";
+        
+        if (audio_frame_count > 0) {
+            ss << ", Аудио: " << sample_rate << " Гц, " << channels << " каналов";
         }
+        
         return ss.str();
     }
 

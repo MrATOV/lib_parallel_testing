@@ -31,6 +31,20 @@ public:
         return thread * times[thread];
     }
 
+    double getAmdahlP(size_t thread, double acceleration) {
+        if (acceleration < 0 || thread == 1) {
+            return -1.0;
+        }
+        return (thread * (acceleration - 1)) / (acceleration * (thread - 1));
+    }
+
+    double getGustavsonP(size_t thread, double acceleration) {
+        if (acceleration < 0 || thread == 1) {
+            return -1.0;
+        }
+        return (acceleration - 1) / (thread - 1);
+    }
+
     const auto& GetTimes() const {
         return times;
     }

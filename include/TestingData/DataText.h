@@ -79,8 +79,7 @@ public:
     }
 
     const std::string title() const override {
-        std::string title = "Строка. Количество символов=" + std::to_string(_data.length()); 
-        return title;
+        return "Строка с количеством символов: " + std::to_string(_data.length()) + ".";
     }
 
     const std::string type() const override {

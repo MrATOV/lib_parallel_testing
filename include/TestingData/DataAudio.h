@@ -105,9 +105,9 @@ public:
 
     const std::string title() const override {
         std::stringstream ss;
-        ss << "Аудио. Частота: " << _sampleRate << " Гц, ";
-        ss << "Сэмплов: " << _sampleCount << ", ";
-        ss << "Каналов: " << _channels;
+        ss << "Аудиофайл с частотой " << _sampleRate << " Гц, "
+           << "содержит " << _sampleCount << " сэмплов и "
+           << _channels << " каналов.";
         return ss.str();
     }
 

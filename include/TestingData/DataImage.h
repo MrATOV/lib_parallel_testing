@@ -94,8 +94,7 @@ public:
     }
 
     const std::string title() const override {
-        std::string title = "Изображение. Размер=" + std::to_string(_width) + " на " + std::to_string(_height); 
-        return title;
+        return "Изображение " + std::to_string(_width) + " на " + std::to_string(_height) + " пикселей.";
     }
 
     const std::string type() const override {

@@ -114,8 +114,7 @@ public:
     }
 
     const std::string title() const override {
-        std::string title = "Одномерный массив. Количество элементов=" + std::to_string(_data.size()); 
-        return title;
+        return "Одномерный массив с количеством элементов: " + std::to_string(_data.size());
     }
 
     const std::string type() const override {

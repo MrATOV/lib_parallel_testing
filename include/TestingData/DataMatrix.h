@@ -134,8 +134,7 @@ public:
     }
 
     const std::string title() const override {
-        std::string title = "Матрица. Размер=" + std::to_string(_data.size()) + " на " + std::to_string(_data.back().size()); 
-        return title;
+        return "Матрица размером " + std::to_string(_data.size()) + " на " + std::to_string(_data.back().size()) + " элементов.";
     }
 
     const std::string type() const override {

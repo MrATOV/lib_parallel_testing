@@ -91,12 +91,14 @@ public:
                     if (saveOption == SaveOption::saveAll) {
                         thread_result["processing_data"] = data->save_copy(dirname, args_id + 1, thread);
                     }
-    
+                    auto acceleration = pe.getAcceleration(thread);
                     thread_result["thread"] = thread;
                     thread_result["time"] = time;
                     thread_result["acceleration"] = pe.getAcceleration(thread);
                     thread_result["efficiency"] = pe.getEfficiency(thread);
                     thread_result["cost"] = pe.getCost(thread);
+                    thread_result["amdahl_p"] = pe.getAmdahlP(thread, acceleration);
+                    thread_result["gustavson_p"] = pe.getGustavsonP(thread, acceleration);
                     
                     performance_result.push_back(thread_result);
     
